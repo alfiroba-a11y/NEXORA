@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="upgrades.css" />
+  <link rel="stylesheet" href="platform.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -18,12 +20,13 @@
         <a href="#portfolio"><span>◌</span> Portfolio</a>
         <a href="#markets"><span>⌁</span> Markets</a>
         <a href="#history"><span>▤</span> History</a>
+        <a href="#cashier" id="cashierNav"><span>▣</span> Cashier</a>
         <a href="#alerts"><span>♧</span> Alerts <b id="alertCount">2</b></a>
       </nav>
       <div class="side-bottom">
         <button class="help-link" id="themeBtn">◐ &nbsp; Light mode</button>
         <button class="help-link">? &nbsp; Help centre</button>
-        <div class="profile"><div class="avatar">AM</div><div><strong>Alex Morgan</strong><small>Verified account</small></div><button class="more">•••</button></div>
+        <button class="profile" id="profileBtn"><div class="avatar">AM</div><div><strong>Alex Morgan</strong><small>Verified account · Security</small></div><span class="more">•••</span></button>
       </div>
     </aside>
 
@@ -51,6 +54,8 @@
           <div class="chart-footer"><span>09:00</span><span>10:00</span><span>11:00</span><span>12:00</span><span>13:00</span><span>14:00</span><span>15:00</span><span>16:00</span></div>
         </div>
 
+        <section class="wallet-strip" id="cashier"><div><span class="wallet-icon">▣</span><div><b>Cashier & wallets</b><small>USD · EUR · BTC · ETH · USDT</small></div></div><div class="wallet-actions"><button id="withdrawBtn">Withdraw</button><button id="walletDeposit">+ Deposit</button></div></section>
+
         <div class="content-grid">
           <section class="positions card" id="portfolio"><div class="card-head"><div><h2>Open positions <span id="posCount">0</span></h2><p>Your active trades</p></div><button class="text-btn">View all →</button></div><div id="positionsList" class="positions-list"><div class="empty"><span>⌁</span><strong>No open positions</strong><p>Your active trades will appear here.</p></div></div></section>
           <section class="watchlist card" id="markets"><div class="card-head"><div><h2>Watchlist</h2><p>Popular markets</p></div><button class="text-btn" id="addMarket">+ Add</button></div><div id="watchlist"></div></section>
@@ -62,6 +67,8 @@
       <div class="trade-header"><div><span class="live-dot"></span> <b id="accountTitle">Demo account</b><small>Practice with virtual funds</small></div><button class="sliders">☷</button></div>
       <div class="balance-row"><span>Available balance</span><strong id="tradeBalance">$10,000.00</strong></div>
       <div class="order-tabs"><button class="selected" data-tab="market">Market</button><button data-tab="limit">Limit</button><button data-tab="stop">Stop</button></div>
+      <div class="engine-switch"><button class="selected" data-engine="cfd">CFD trading</button><button data-engine="options">Digital options</button></div>
+      <div class="contract-fields" id="contractFields"><label class="field-label">Contract type</label><select id="contractType"><option>Higher / Lower</option><option>Rise / Fall</option><option>Even / Odd</option><option>Matches / Differs</option><option>Over / Under digit</option><option>Touch / No touch</option><option>Multiplier</option><option>Accumulator</option></select><div class="contract-inline"><label>Duration<select id="duration"><option>5 ticks</option><option>1 minute</option><option>5 minutes</option></select></label><label>Barrier<input id="barrier" value="5" inputmode="numeric"></label></div><div class="payout-preview"><span>Potential payout</span><b id="payout">$185.00</b><small>Indicative · confirmed before execution</small></div></div>
       <div class="direction"><button class="buy selected" data-side="buy"><small>Buy</small><strong id="buyPrice">1.08431</strong></button><button class="sell" data-side="sell"><small>Sell</small><strong id="sellPrice">1.08421</strong></button></div>
       <label class="field-label">Amount <span>USD</span></label><div class="input-wrap"><button id="minusAmount">−</button><input id="amount" type="number" min="1" value="100" /><button id="plusAmount">+</button></div>
       <div class="quick-amounts"><button data-amount="25">$25</button><button data-amount="50">$50</button><button data-amount="100">$100</button><button data-amount="500">$500</button></div>
@@ -75,7 +82,10 @@
   <div class="modal-backdrop" id="modalBackdrop"></div>
   <section class="modal" id="fundModal"><button class="close-modal">×</button><div class="modal-brand"><span class="brand-mark">N</span> NEXORA<span class="dot">.</span>COM</div><div id="fundContent"></div></section>
   <section class="modal auth-modal" id="authModal"><button class="close-modal">×</button><div class="modal-brand"><span class="brand-mark">N</span> NEXORA<span class="dot">.</span>COM</div><h2>Welcome to NEXORA</h2><p>Sign in to trade live markets securely.</p><label>Email address<input type="email" placeholder="you@example.com"></label><label>Password<input type="password" placeholder="••••••••"></label><button class="place-order" id="authContinue">Sign in <span>→</span></button><p class="auth-switch">New to NEXORA? <a href="#">Create an account</a></p></section>
+  <section class="modal" id="profileModal"><button class="close-modal">×</button><div class="modal-brand"><span class="brand-mark">N</span> NEXORA<span class="dot">.</span>COM</div><h2>Security & profile</h2><p>Protect your account and manage active sessions.</p><div class="security-row"><div><b>Authenticator app</b><small>Google Authenticator or compatible app</small></div><button id="twoFactorBtn">Set up 2FA</button></div><div class="security-row"><div><b>Trusted devices</b><small>This device · Nairobi, KE</small></div><button>Manage</button></div><div class="security-row"><div><b>Session controls</b><small>Session persistence with secure refresh tokens</small></div><button>Review</button></div></section>
   <div class="toast" id="toast"></div>
   <script src="app.js"></script>
+  <script src="upgrades.js"></script>
+  <script src="platform.js"></script>
 </body>
 </html>
