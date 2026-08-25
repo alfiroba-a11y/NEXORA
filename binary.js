@@ -46,9 +46,10 @@ qa('.quick button').forEach(b => b.onclick = () => { stake = Number(b.textConten
 qa('.contract-tabs button,.mode button').forEach(b => b.onclick = () => { b.parentElement.querySelectorAll('button').forEach(x => x.classList.remove('active')); b.classList.add('active'); });
 q('#zoomIn').onclick = () => { zoom = Math.min(2, zoom + .15); draw(); }; q('#zoomOut').onclick = () => { zoom = Math.max(.35, zoom - .15); draw(); }; q('#zoomReset').onclick = () => { zoom = 1; draw(); };
 qa('#binDeposit,#binDeposit2').forEach(b => b.onclick = () => modal('Deposit funds', 'Sign in to use the secure NEXORA cashier.'));
-q('#binWithdraw').onclick = () => modal('Withdraw funds', 'Sign in to request a secure withdrawal.'); q('#binAccount').onclick = () => modal('Account access', 'Sign in or create an account to access Real trading.');
+q('#binWithdraw').onclick = () => modal('Withdraw funds', localStorage.getItem('nexora_token') ? 'Your signed-in NEXORA account can request a secure withdrawal.' : 'Sign in on NEXORA Forex & Crypto to access your shared cashier.'); q('#binAccount').onclick = () => { if(localStorage.getItem('nexora_token')) toast('You are signed in to your shared NEXORA account.'); else location.href='index.html?auth=signin'; };
 q('.x').onclick = () => { q('#shade').classList.remove('open'); q('#binModal').classList.remove('open'); };
 q('#chatBtn').onclick = () => toast('Secure support chat will open after sign in.'); q('#historyBtn').onclick = () => toast('Your transaction history is empty.'); q('#even').onclick = () => toast(`Even contract selected · stake $${stake}`); q('#odd').onclick = () => toast(`Odd contract selected · stake $${stake}`);
 window.addEventListener('resize', draw); draw(); tick(); setInterval(tick, 1000);
 const binaryStyle = document.createElement('link'); binaryStyle.rel = 'stylesheet'; binaryStyle.href = 'binary-enhancements.css'; document.head.append(binaryStyle);
 const binaryEnhancements = document.createElement('script'); binaryEnhancements.src = 'binary-enhancements.js'; document.body.append(binaryEnhancements);
+const sharedSession = document.createElement('script'); sharedSession.src = 'shared-session.js'; document.body.append(sharedSession);
