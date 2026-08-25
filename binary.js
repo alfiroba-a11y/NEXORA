@@ -50,3 +50,5 @@ q('#binWithdraw').onclick = () => modal('Withdraw funds', 'Sign in to request a 
 q('.x').onclick = () => { q('#shade').classList.remove('open'); q('#binModal').classList.remove('open'); };
 q('#chatBtn').onclick = () => toast('Secure support chat will open after sign in.'); q('#historyBtn').onclick = () => toast('Your transaction history is empty.'); q('#even').onclick = () => toast(`Even contract selected · stake $${stake}`); q('#odd').onclick = () => toast(`Odd contract selected · stake $${stake}`);
 window.addEventListener('resize', draw); draw(); tick(); setInterval(tick, 1000);
+const binaryStyle = document.createElement('link'); binaryStyle.rel = 'stylesheet'; binaryStyle.href = 'binary-enhancements.css'; document.head.append(binaryStyle);
+const binaryEnhancements = document.createElement('script'); binaryEnhancements.src = 'binary-enhancements.js'; document.body.append(binaryEnhancements);
