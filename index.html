@@ -10,13 +10,13 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="upgrades.css" />
   <link rel="stylesheet" href="platform.css" />
-  <link rel="stylesheet" href="digits.css" />
   <link rel="stylesheet" href="auth.css" />
   <link rel="stylesheet" href="interactions.css" />
   <link rel="stylesheet" href="tradingview.css" />
   <link rel="stylesheet" href="mobile.css" />
   <link rel="stylesheet" href="binary-link.css" />
   <link rel="stylesheet" href="forex-layout-fix.css" />
+  <link rel="stylesheet" href="wallet-account.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -27,7 +27,7 @@
         <a href="#portfolio"><span>◌</span> Portfolio</a>
         <a href="#markets"><span>⌁</span> Markets</a>
         <a href="#history"><span>▤</span> History</a>
-        <a href="#cashier" id="cashierNav"><span>▣</span> Cashier</a>
+        <a href="#wallet" id="cashierNav"><span>▣</span> Wallet</a>
         <a href="#alerts"><span>♧</span> Alerts <b id="alertCount">2</b></a>
       </nav>
       <div class="side-bottom">
@@ -44,7 +44,7 @@
         <div class="top-actions">
           <div class="account-switch"><button class="account-pill demo active" data-account="demo"><i></i> Demo <span id="demoBalance">$10,000.00</span></button><button class="account-pill real" data-account="real"><i></i> Real <span id="realBalance">$0.00</span></button></div>
           <button class="icon-btn" id="notifyBtn">♢<em></em></button>
-          <button class="withdraw-top" id="withdrawTop">Withdraw</button><button class="deposit-btn" id="depositBtn">Deposit</button>
+          <button class="wallet-top" id="walletTop">Wallet</button>
         </div>
       </header>
 
@@ -60,8 +60,6 @@
           <canvas id="chart"></canvas>
           <div class="chart-footer"><span>09:00</span><span>10:00</span><span>11:00</span><span>12:00</span><span>13:00</span><span>14:00</span><span>15:00</span><span>16:00</span></div>
         </div>
-
-        <section class="wallet-strip" id="cashier"><div><span class="wallet-icon">▣</span><div><b>Cashier & wallets</b><small>USD · EUR · BTC · ETH · USDT</small></div></div><div class="wallet-actions"><button id="withdrawBtn">Withdraw</button><button id="walletDeposit">+ Deposit</button></div></section>
 
         <div class="content-grid">
           <section class="positions card" id="portfolio"><div class="card-head"><div><h2>Open positions <span id="posCount">0</span></h2><p>Your active trades</p></div><button class="text-btn">View all →</button></div><div id="positionsList" class="positions-list"><div class="empty"><span>⌁</span><strong>No open positions</strong><p>Your active trades will appear here.</p></div></div></section>
@@ -91,10 +89,10 @@
   <section class="modal auth-modal" id="authModal"><button class="close-modal">×</button><div class="modal-brand"><span class="brand-mark">N</span> NEXORA<span class="dot">.</span>COM</div><h2>Welcome to NEXORA</h2><p>Sign in to trade live markets securely.</p><label>Email address<input type="email" placeholder="you@example.com"></label><label>Password<input type="password" placeholder="••••••••"></label><button class="place-order" id="authContinue">Sign in <span>→</span></button><p class="auth-switch">New to NEXORA? <a href="#">Create an account</a></p></section>
   <section class="modal" id="profileModal"><button class="close-modal">×</button><div class="modal-brand"><span class="brand-mark">N</span> NEXORA<span class="dot">.</span>COM</div><h2>Security & profile</h2><p>Protect your account and manage active sessions.</p><div class="security-row"><div><b>Authenticator app</b><small>Google Authenticator or compatible app</small></div><button id="twoFactorBtn">Set up 2FA</button></div><div class="security-row"><div><b>Trusted devices</b><small>This device · Nairobi, KE</small></div><button>Manage</button></div><div class="security-row"><div><b>Session controls</b><small>Session persistence with secure refresh tokens</small></div><button>Review</button></div></section>
   <div class="toast" id="toast"></div>
+  <button id="depositBtn" hidden></button><button id="withdrawTop" hidden></button><button id="walletDeposit" hidden></button><button id="withdrawBtn" hidden></button><div id="cashier" hidden></div>
   <script src="app.js"></script>
   <script src="upgrades.js"></script>
   <script src="platform.js"></script>
-  <script src="digits.js"></script>
   <script src="auth.js"></script>
   <script src="shared-session.js"></script>
   <script src="interactions.js"></script>
@@ -102,5 +100,6 @@
   <script src="tradingview-switch.js"></script>
   <script src="mobile.js"></script>
   <script src="market-fix.js"></script>
+  <script src="wallet-account.js"></script>
 </body>
 </html>
