@@ -9,6 +9,10 @@ This app is ready for a Render web service with a managed Render PostgreSQL data
 3. Configure the Paystack dashboard webhook to `https://YOUR-SERVICE.onrender.com/api/payments/paystack/webhook` and verify the secret matches `PAYSTACK_WEBHOOK_SECRET`.
 4. Replace the generic request mapping in `broker.js` with the exact request/response contract of your licensed broker API, then configure its market-feed WebSocket in the same provider module.
 
+### Housika Payments deposits
+
+Set `PAYSTACK_PUBLIC_KEY` and `PAYSTACK_SECRET_KEY` as Render environment variables. NEXORA uses the public key only to open the Housika/Paystack checkout popup; the secret key stays server-side and verifies the payment before crediting the real balance. Minimum deposit is KSh 650 ($5 at the configured KSh 130/USD rate). Configure your Paystack webhook to `/api/payments/paystack/webhook` on this service. Withdrawals remain processing requests for manual review.
+
 ### Fix for `ECONNREFUSED ::1:5432` / `127.0.0.1:5432`
 
 That error means `DATABASE_URL` is missing or is set to a localhost URL. In Render, open the **web service → Environment** and set `DATABASE_URL` to the **Internal Database URL** shown under your Render Postgres database's **Connect** menu. Do not use `localhost`, `127.0.0.1`, or the external URL for the deployed service. If deploying with the included Blueprint, delete any manually-defined `DATABASE_URL`, then sync the Blueprint so its `fromDatabase` binding supplies the internal URL automatically.

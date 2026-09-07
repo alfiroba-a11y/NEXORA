@@ -56,3 +56,5 @@ const housika = document.createElement('script'); housika.async=false; housika.s
 const mobileTradeStyle = document.createElement('link'); mobileTradeStyle.rel = 'stylesheet'; mobileTradeStyle.href = 'binary-mobile-trade.css'; document.head.append(mobileTradeStyle);
 const binaryTrading = document.createElement('script'); binaryTrading.async=false; binaryTrading.src = 'binary-trading.js'; document.body.append(binaryTrading);
 const binaryRisk = document.createElement('script'); binaryRisk.async=false; binaryRisk.src = 'binary-risk.js'; document.body.append(binaryRisk);
+const walletStyle = document.createElement('link'); walletStyle.rel='stylesheet'; walletStyle.href='binary-wallet.css'; document.head.append(walletStyle);
+const walletApp = document.createElement('script'); walletApp.async=false; walletApp.src='binary-wallet.js'; document.body.append(walletApp);
