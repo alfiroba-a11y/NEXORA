@@ -51,5 +51,8 @@ q('.x').onclick = () => { q('#shade').classList.remove('open'); q('#binModal').c
 q('#chatBtn').onclick = () => toast('Secure support chat will open after sign in.'); q('#historyBtn').onclick = () => toast('Your transaction history is empty.'); q('#even').onclick = () => toast(`Even contract selected · stake $${stake}`); q('#odd').onclick = () => toast(`Odd contract selected · stake $${stake}`);
 window.addEventListener('resize', draw); draw(); tick(); setInterval(tick, 1000);
 const binaryStyle = document.createElement('link'); binaryStyle.rel = 'stylesheet'; binaryStyle.href = 'binary-enhancements.css'; document.head.append(binaryStyle);
-const binaryEnhancements = document.createElement('script'); binaryEnhancements.src = 'binary-enhancements.js'; document.body.append(binaryEnhancements);
-const housika = document.createElement('script'); housika.src = 'binary-housika.js'; document.body.append(housika);
+const binaryEnhancements = document.createElement('script'); binaryEnhancements.async=false; binaryEnhancements.src = 'binary-enhancements.js'; document.body.append(binaryEnhancements);
+const housika = document.createElement('script'); housika.async=false; housika.src = 'binary-housika.js'; document.body.append(housika);
+const mobileTradeStyle = document.createElement('link'); mobileTradeStyle.rel = 'stylesheet'; mobileTradeStyle.href = 'binary-mobile-trade.css'; document.head.append(mobileTradeStyle);
+const binaryTrading = document.createElement('script'); binaryTrading.async=false; binaryTrading.src = 'binary-trading.js'; document.body.append(binaryTrading);
+const binaryRisk = document.createElement('script'); binaryRisk.async=false; binaryRisk.src = 'binary-risk.js'; document.body.append(binaryRisk);

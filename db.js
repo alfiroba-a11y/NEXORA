@@ -30,5 +30,10 @@ export async function migrate() {
     CREATE TABLE IF NOT EXISTS webhook_events (
       event_id TEXT PRIMARY KEY, payload JSONB NOT NULL, received_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS withdrawal_requests (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id),
+      amount NUMERIC(18,2) NOT NULL, method TEXT NOT NULL CHECK(method IN ('mpesa','trc20')),
+      destination TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'processing', created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 }
