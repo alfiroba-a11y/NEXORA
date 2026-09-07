@@ -53,8 +53,12 @@ function trade(type) {
   if (!wallet) return toast('Wallet is loading.');
   if (wallet.mode === 'real') return toast('Real Binary execution needs your licensed provider connection.');
   const current = Number(localStorage.getItem('nexora_demo_balance') || 10000);
+  const dailyLimit = Number(localStorage.getItem('nexora_daily_limit') || 0);
+  const stakedToday = Number(localStorage.getItem('nexora_daily_staked') || 0);
+  if (dailyLimit && stakedToday + stake > dailyLimit) return toast(`Daily Demo stake limit is $${dailyLimit.toFixed(2)}.`);
   if (stake > current) return toast('Demo balance is insufficient. Refresh Demo in Wallet.');
   wallet.debit(stake);
+  localStorage.setItem('nexora_daily_staked', String(stakedToday + stake));
   const position = { type, stake, endsAt: Date.now() + 12000 };
   position.timer = setTimeout(() => settle(position), 12000);
   openPositions.push(position);
