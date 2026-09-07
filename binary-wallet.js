@@ -114,7 +114,8 @@ async function saveAccountSettings() {
 
 function signOut() {
   localStorage.removeItem('nexora_token'); localStorage.removeItem('nexora_user'); localStorage.removeItem('nexora_pending_account_mode');
-  walletMode = 'demo'; localStorage.setItem('nexora_binary_mode', 'demo'); updateWallet(); close(); toast('You have been signed out.');
+  walletMode = 'demo'; localStorage.setItem('nexora_binary_mode', 'demo');
+  location.replace('index.html');
 }
 
 async function deleteAccount() {
