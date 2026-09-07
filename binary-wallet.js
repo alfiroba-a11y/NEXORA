@@ -11,7 +11,7 @@ host.insertAdjacentHTML('afterbegin', `
     <button data-mode="demo">Demo</button><button data-mode="real">Real</button>
   </div>
   <div class="account-balance" aria-label="Available balance"><b id="walletBalance">$10,000.00</b></div>
-  <button class="wallet-launch" id="walletLaunch">Wallet</button>`);
+  <button class="wallet-launch" id="walletLaunch">Wallet</button><button class="profile-launch" id="profileLaunch" aria-label="Profile">◎</button>`);
 
 document.body.insertAdjacentHTML('beforeend', `
   <section class="wallet-panel" id="walletPanel">
@@ -64,6 +64,8 @@ function choose(mode) {
 
 document.querySelectorAll('.account-switcher button').forEach(button => button.onclick = () => choose(button.dataset.mode));
 bw$('#walletLaunch').onclick = () => bw$('#walletPanel').classList.toggle('open');
+bw$('#profileLaunch').onclick = openAccountSettings;
+bw$('#binAccount').onclick = () => signed() ? openAccountSettings() : choose('real');
 bw$('#resetDemo').onclick = () => {
   demoFunds = 10000;
   localStorage.setItem('nexora_demo_balance', demoFunds);
