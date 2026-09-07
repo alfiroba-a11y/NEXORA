@@ -147,6 +147,7 @@ document.addEventListener('nexora:wallet-changed', refreshRealBalance);
 
 window.nexoraBinaryWallet = {
   get mode() { return walletMode; },
+  get balance() { return walletMode === 'demo' ? demoFunds : realFunds; },
   debit(amount) {
     if (walletMode !== 'demo') return;
     demoFunds = Math.max(0, demoFunds - amount);
