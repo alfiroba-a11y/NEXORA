@@ -64,8 +64,8 @@ function choose(mode) {
 
 document.querySelectorAll('.account-switcher button').forEach(button => button.onclick = () => choose(button.dataset.mode));
 bw$('#walletLaunch').onclick = () => bw$('#walletPanel').classList.toggle('open');
-bw$('#profileLaunch').onclick = openAccountSettings;
-bw$('#binAccount').onclick = () => signed() ? openAccountSettings() : choose('real');
+bw$('#profileLaunch').onclick = () => { sessionStorage.setItem('nexora_internal_navigation', 'settings'); location.href = 'settings.html'; };
+bw$('#binAccount').onclick = () => { sessionStorage.setItem('nexora_internal_navigation', 'settings'); location.href = 'settings.html'; };
 bw$('#resetDemo').onclick = () => {
   demoFunds = 10000;
   localStorage.setItem('nexora_demo_balance', demoFunds);
@@ -74,7 +74,7 @@ bw$('#resetDemo').onclick = () => {
 };
 bw$('#walletDeposit').onclick = () => { bw$('#walletPanel').classList.remove('open'); bw$('#binDeposit').click(); };
 bw$('#walletWithdraw').onclick = () => { bw$('#walletPanel').classList.remove('open'); bw$('#binWithdraw').click(); };
-bw$('#accountSettings').onclick = openAccountSettings;
+bw$('#accountSettings').onclick = () => { sessionStorage.setItem('nexora_internal_navigation', 'settings'); location.href = 'settings.html'; };
 
 async function openAccountSettings() {
   if (!signed()) return choose('real');

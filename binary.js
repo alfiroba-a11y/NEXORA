@@ -51,6 +51,7 @@ q('#binWithdraw').onclick = () => modal('Withdrawals pending approval', 'Withdra
 q('.x').onclick = () => { q('#shade').classList.remove('open'); q('#binModal').classList.remove('open'); };
 q('#chatBtn').onclick = () => toast('Secure support chat will open after sign in.'); q('#historyBtn').onclick = () => toast('Your transaction history is empty.'); q('#even').onclick = () => toast(`Even contract selected · stake $${stake}`); q('#odd').onclick = () => toast(`Odd contract selected · stake $${stake}`);
 window.addEventListener('resize', draw); draw(); tick(); setInterval(tick, 1000);
+window.addEventListener('pagehide', () => { if (sessionStorage.getItem('nexora_internal_navigation') === 'settings') { sessionStorage.removeItem('nexora_internal_navigation'); return; } localStorage.removeItem('nexora_token'); localStorage.removeItem('nexora_user'); });
 const binaryStyle = document.createElement('link'); binaryStyle.rel = 'stylesheet'; binaryStyle.href = 'binary-enhancements.css'; document.head.append(binaryStyle);
 const binaryEnhancements = document.createElement('script'); binaryEnhancements.async=false; binaryEnhancements.src = 'binary-enhancements.js'; document.body.append(binaryEnhancements);
 const housika = document.createElement('script'); housika.async=false; housika.src = 'binary-housika.js'; document.body.append(housika);
@@ -59,3 +60,4 @@ const binaryTrading = document.createElement('script'); binaryTrading.async=fals
 const binaryRisk = document.createElement('script'); binaryRisk.async=false; binaryRisk.src = 'binary-risk.js'; document.body.append(binaryRisk);
 const walletStyle = document.createElement('link'); walletStyle.rel='stylesheet'; walletStyle.href='binary-wallet.css'; document.head.append(walletStyle);
 const walletApp = document.createElement('script'); walletApp.async=false; walletApp.src='binary-wallet.js'; document.body.append(walletApp);
+const navigationStyle = document.createElement('style'); navigationStyle.textContent='.mobile-menu{display:block!important;border:0;background:transparent;color:#c0c9da;font-size:30px;line-height:1}@media(max-width:800px){.choices{position:fixed!important;z-index:16;left:10px;right:10px;bottom:68px;margin:0!important;grid-template-columns:1fr 1fr!important}.choices button{min-height:74px!important;padding:10px!important}.choices b{font-size:19px!important}.choices em{bottom:10px!important}.choices small{top:10px!important}.trade{padding-bottom:170px!important}}'; document.head.append(navigationStyle);
