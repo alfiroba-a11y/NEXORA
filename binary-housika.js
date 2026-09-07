@@ -1,8 +1,102 @@
-const h$=s=>document.querySelector(s);document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="binary-housika.css">');h$('.flip')?.remove();
-function signed(){return !!localStorage.getItem('nexora_token')}function token(){return localStorage.getItem('nexora_token')}function show(){h$('#shade').classList.add('open');h$('#binModal').classList.add('open')}function close(){h$('.x').click()}
-function showAuth(mode='signin'){h$('#modalTitle').textContent=mode==='signup'?'Create your NEXORA account':'Sign in to NEXORA';h$('#modalText').innerHTML=`<label>Email<input id="hEmail" type="email" placeholder="you@example.com"></label><label>Password<input id="hPassword" type="password" placeholder="At least 12 characters"></label><p class="housika-note">Your account keeps your NEXORA Binary balance and payment history secure.</p><button class="auth-toggle" id="hToggle">${mode==='signup'?'Already have an account? Sign in':'New to NEXORA? Create an account'}</button>`;h$('#modalAction').textContent=mode==='signup'?'Create account':'Sign in';h$('#modalAction').onclick=async()=>{try{const r=await fetch(`/api/auth/${mode==='signup'?'signup':'signin'}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:h$('#hEmail').value,password:h$('#hPassword').value})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Account request failed');localStorage.setItem('nexora_token',d.token);localStorage.setItem('nexora_user',JSON.stringify(d.user));h$('.account span').innerHTML=`${d.user.email.split('@')[0]}<br><b>Signed in</b>`;close();toast('Signed in to NEXORA Binary.')}catch(e){toast(e.message)}};h$('#hToggle').onclick=()=>showAuth(mode==='signup'?'signin':'signup');show()}
-async function loadPaystack(){if(window.PaystackPop)return true;return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://js.paystack.co/v1/inline.js';s.onload=()=>resolve(true);s.onerror=()=>reject(new Error('Could not load Housika Payments checkout.'));document.head.append(s)})}
-function verifyHousikaDeposit(reference,headers){fetch('/api/housika/verify-deposit',{method:'POST',headers,body:JSON.stringify({reference})}).then(r=>r.json().then(d=>({ok:r.ok,data:d}))).then(result=>{if(!result.ok)throw new Error(result.data.error||'Payment verification failed');close();document.dispatchEvent(new Event('nexora:wallet-changed'));toast(`Deposit confirmed. $${Number(result.data.balanceCredited).toFixed(2)} credited.`)}).catch(e=>toast(e.message))}
-function showDeposit(){if(!signed())return showAuth();h$('#modalTitle').textContent='Housika Payments — Deposit';h$('#modalText').innerHTML='<label>Amount (KSh)<input id="hAmount" type="number" min="650" value="650"></label><p class="housika-note"><b>Minimum deposit: KSh 650 ($5.00 at KSh 130/USD).</b><br>Housika Payments securely opens Paystack checkout. Your NEXORA balance is credited only after server verification.</p>';h$('#modalAction').textContent='Pay with Housika';h$('#modalAction').onclick=async()=>{const amountKes=Number(h$('#hAmount').value);if(!amountKes||amountKes<650)return toast('Minimum deposit is KSh 650.');try{const headers={Authorization:`Bearer ${token()}`,'Content-Type':'application/json'};const [configRes,intentRes]=await Promise.all([fetch('/api/housika/config',{headers:{Authorization:`Bearer ${token()}`}}),fetch('/api/housika/deposit-intent',{method:'POST',headers,body:JSON.stringify({amountKes})})]);const config=await configRes.json(),intent=await intentRes.json();if(!configRes.ok)throw new Error(config.error||'Housika Payments is not configured.');if(!intentRes.ok)throw new Error(intent.error||'Unable to start deposit.');await loadPaystack();const user=JSON.parse(localStorage.getItem('nexora_user'));const handler=PaystackPop.setup({key:config.publicKey,email:user.email,amount:Math.round(amountKes*100),currency:'KES',ref:intent.reference,channels:['mobile_money','card'],callback:function(response){verifyHousikaDeposit(response.reference,headers)},onClose:function(){toast('Payment checkout closed.')}});handler.openIframe()}catch(e){toast(e.message)}};show()}
-function showWithdrawal(){if(!signed())return showAuth();h$('#modalTitle').textContent='Request withdrawal';h$('#modalText').innerHTML='<label>Amount (USD)<input id="wAmount" type="number" min="5" value="5"></label><label>Destination<select id="wMethod"><option value="mpesa">M-Pesa number</option><option value="trc20">USDT TRC20 address</option></select></label><label id="destinationLabel">M-Pesa number<input id="wDestination" placeholder="2547XXXXXXXX"></label><p class="housika-note">Your request will be recorded as processing. It is not an automatic payout.</p>';h$('#wMethod').onchange=()=>{const trc=h$('#wMethod').value==='trc20';h$('#destinationLabel').firstChild.textContent=trc?'USDT TRC20 address':'M-Pesa number';h$('#wDestination').placeholder=trc?'T...':'2547XXXXXXXX'};h$('#modalAction').textContent='Request withdrawal';h$('#modalAction').onclick=async()=>{const amount=Number(h$('#wAmount').value),destination=h$('#wDestination').value.trim();if(!amount||amount<5||!destination)return toast('Enter at least $5 and a withdrawal destination.');try{const r=await fetch('/api/withdrawal-requests',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token()}`},body:JSON.stringify({amount,method:h$('#wMethod').value,destination})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Unable to create request');close();toast('Withdrawal processing. You will be notified after review.')}catch(e){toast(e.message)}};show()}
-h$('#binDeposit').onclick=showDeposit;h$('#binDeposit2').onclick=showDeposit;h$('#binAccount').onclick=()=>signed()?toast('You are signed in to NEXORA Binary.'):showAuth();h$('#binWithdraw').classList.remove('withdraw-disabled');h$('#binWithdraw').onclick=showWithdrawal;
+const h$ = selector => document.querySelector(selector);
+document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="binary-housika.css">');
+h$('.flip')?.remove();
+
+function signed() { return !!localStorage.getItem('nexora_token'); }
+function token() { return localStorage.getItem('nexora_token'); }
+function show() { h$('#shade').classList.add('open'); h$('#binModal').classList.add('open'); }
+function close() { h$('.x').click(); }
+
+function showAuth(mode = 'signin') {
+  h$('#modalTitle').textContent = mode === 'signup' ? 'Create your NEXORA account' : 'Sign in to NEXORA';
+  h$('#modalText').innerHTML = `<label>Email<input id="hEmail" type="email" placeholder="you@example.com"></label><label>Password<input id="hPassword" type="password" placeholder="At least 12 characters"></label><button class="auth-toggle" id="hToggle">${mode === 'signup' ? 'Already have an account? Sign in' : 'New to NEXORA? Create an account'}</button>`;
+  h$('#modalAction').textContent = mode === 'signup' ? 'Create account' : 'Sign in';
+  h$('#modalAction').onclick = async () => {
+    try {
+      const response = await fetch(`/api/auth/${mode === 'signup' ? 'signup' : 'signin'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: h$('#hEmail').value, password: h$('#hPassword').value }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Account request failed');
+      localStorage.setItem('nexora_token', data.token);
+      localStorage.setItem('nexora_user', JSON.stringify(data.user));
+      h$('.account span').innerHTML = `${data.user.email.split('@')[0]}<br><b>Signed in</b>`;
+      document.dispatchEvent(new Event('nexora:auth-changed'));
+      close();
+      toast('Signed in to NEXORA Binary.');
+    } catch (error) { toast(error.message); }
+  };
+  h$('#hToggle').onclick = () => showAuth(mode === 'signup' ? 'signin' : 'signup');
+  show();
+}
+
+async function loadPaystack() {
+  if (window.PaystackPop) return true;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://js.paystack.co/v1/inline.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => reject(new Error('Could not load Housika Payments checkout.'));
+    document.head.append(script);
+  });
+}
+
+function verifyHousikaDeposit(reference, headers) {
+  fetch('/api/housika/verify-deposit', { method: 'POST', headers, body: JSON.stringify({ reference }) })
+    .then(response => response.json().then(data => ({ ok: response.ok, data })))
+    .then(result => {
+      if (!result.ok) throw new Error(result.data.error || 'Payment verification failed');
+      close();
+      document.dispatchEvent(new Event('nexora:wallet-changed'));
+      toast(`Deposit confirmed. $${Number(result.data.balanceCredited).toFixed(2)} credited.`);
+    }).catch(error => toast(error.message));
+}
+
+function showDeposit() {
+  if (!signed()) return showAuth();
+  h$('#modalTitle').textContent = 'Housika Payments — Deposit';
+  h$('#modalText').innerHTML = '<label>Amount (KSh)<input id="hAmount" type="number" min="650" value="650"></label><p class="housika-note">Minimum deposit: $5 (KSh 650).</p>';
+  h$('#modalAction').textContent = 'Deposit';
+  h$('#modalAction').onclick = async () => {
+    const amountKes = Number(h$('#hAmount').value);
+    if (!amountKes || amountKes < 650) return toast('Minimum deposit is $5 (KSh 650).');
+    try {
+      const headers = { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' };
+      const [configRes, intentRes] = await Promise.all([
+        fetch('/api/housika/config', { headers: { Authorization: `Bearer ${token()}` } }),
+        fetch('/api/housika/deposit-intent', { method: 'POST', headers, body: JSON.stringify({ amountKes }) })
+      ]);
+      const config = await configRes.json(), intent = await intentRes.json();
+      if (!configRes.ok) throw new Error(config.error || 'Housika Payments is not configured.');
+      if (!intentRes.ok) throw new Error(intent.error || 'Unable to start deposit.');
+      await loadPaystack();
+      const user = JSON.parse(localStorage.getItem('nexora_user'));
+      const handler = PaystackPop.setup({ key: config.publicKey, email: user.email, amount: Math.round(amountKes * 100), currency: 'KES', ref: intent.reference, channels: ['mobile_money', 'card'], callback: function(response) { verifyHousikaDeposit(response.reference, headers); }, onClose: function() { toast('Payment checkout closed.'); } });
+      handler.openIframe();
+    } catch (error) { toast(error.message); }
+  };
+  show();
+}
+
+function showWithdrawal() {
+  if (!signed()) return showAuth();
+  h$('#modalTitle').textContent = 'Request withdrawal';
+  h$('#modalText').innerHTML = '<label>Amount (USD)<input id="wAmount" type="number" min="10" value="10"></label><label>Destination<select id="wMethod"><option value="mpesa">M-Pesa number</option><option value="trc20">USDT TRC20 address</option></select></label><label id="destinationLabel">M-Pesa number<input id="wDestination" placeholder="2547XXXXXXXX"></label><p class="housika-note">Minimum withdrawal: $10.</p>';
+  h$('#modalAction').textContent = 'Request withdrawal';
+  h$('#wMethod').onchange = () => { const trc = h$('#wMethod').value === 'trc20'; h$('#destinationLabel').firstChild.textContent = trc ? 'USDT TRC20 address' : 'M-Pesa number'; h$('#wDestination').placeholder = trc ? 'T...' : '2547XXXXXXXX'; };
+  h$('#modalAction').onclick = async () => {
+    const amount = Number(h$('#wAmount').value), destination = h$('#wDestination').value.trim();
+    if (!amount || amount < 10 || !destination) return toast('Minimum withdrawal is $10. Enter a destination.');
+    try {
+      const response = await fetch('/api/withdrawal-requests', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` }, body: JSON.stringify({ amount, method: h$('#wMethod').value, destination }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to create request');
+      close(); toast('Withdrawal processing. You will be notified after review.');
+    } catch (error) { toast(error.message); }
+  };
+  show();
+}
+
+h$('#binDeposit').onclick = showDeposit;
+h$('#binDeposit2').onclick = showDeposit;
+h$('#binAccount').onclick = () => signed() ? toast('You are signed in to NEXORA Binary.') : showAuth();
+h$('#binWithdraw').classList.remove('withdraw-disabled');
+h$('#binWithdraw').onclick = showWithdrawal;

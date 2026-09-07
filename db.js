@@ -35,5 +35,8 @@ export async function migrate() {
       amount NUMERIC(18,2) NOT NULL, method TEXT NOT NULL CHECK(method IN ('mpesa','trc20')),
       destination TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'processing', created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_method TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_destination TEXT;
   `);
 }
