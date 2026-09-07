@@ -34,7 +34,7 @@ async function loadPaystack() {
     const script = document.createElement('script');
     script.src = 'https://js.paystack.co/v1/inline.js';
     script.onload = () => resolve(true);
-    script.onerror = () => reject(new Error('Could not load Housika Payments checkout.'));
+    script.onerror = () => reject(new Error('Could not load NEXORA Payments checkout.'));
     document.head.append(script);
   });
 }
@@ -52,7 +52,7 @@ function verifyHousikaDeposit(reference, headers) {
 
 function showDeposit() {
   if (!signed()) return showAuth();
-  h$('#modalTitle').textContent = 'Housika Payments — Deposit';
+  h$('#modalTitle').textContent = 'NEXORA Deposit';
   h$('#modalText').innerHTML = '<label>Amount (KSh)<input id="hAmount" type="number" min="650" value="650"></label><p class="housika-note">Minimum deposit: $5 (KSh 650).</p>';
   h$('#modalAction').textContent = 'Deposit';
   h$('#modalAction').onclick = async () => {
@@ -65,7 +65,7 @@ function showDeposit() {
         fetch('/api/housika/deposit-intent', { method: 'POST', headers, body: JSON.stringify({ amountKes }) })
       ]);
       const config = await configRes.json(), intent = await intentRes.json();
-      if (!configRes.ok) throw new Error(config.error || 'Housika Payments is not configured.');
+      if (!configRes.ok) throw new Error(config.error || 'NEXORA Payments is not configured.');
       if (!intentRes.ok) throw new Error(intent.error || 'Unable to start deposit.');
       await loadPaystack();
       const user = JSON.parse(localStorage.getItem('nexora_user'));

@@ -1,3 +1,4 @@
+try { if (JSON.parse(atob(localStorage.getItem('nexora_token').split('.')[1])).exp * 1000 <= Date.now()) throw new Error('expired'); } catch { localStorage.removeItem('nexora_token'); localStorage.removeItem('nexora_user'); location.replace('index.html'); }
 const q = s => document.querySelector(s);
 const qa = s => [...document.querySelectorAll(s)];
 let stake = 10, zoom = 1;

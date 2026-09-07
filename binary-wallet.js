@@ -11,11 +11,11 @@ host.insertAdjacentHTML('afterbegin', `
     <button data-mode="demo">Demo</button><button data-mode="real">Real</button>
   </div>
   <div class="account-balance" aria-label="Available balance"><b id="walletBalance">$10,000.00</b></div>
-  <button class="wallet-launch" id="walletLaunch">Wallet</button><button class="profile-launch" id="profileLaunch" aria-label="Profile">◎</button>`);
+  <button class="wallet-launch" id="walletLaunch">Wallet</button><button class="profile-launch" id="profileLaunch" aria-label="Profile" hidden></button>`);
 
 document.body.insertAdjacentHTML('beforeend', `
   <section class="wallet-panel" id="walletPanel">
-    <h3>Housika Payments</h3><p id="walletAccountName">Demo account</p>
+    <h3>NEXORA Payments</h3><p id="walletAccountName">Demo account</p>
     <div class="wallet-balance" id="walletPanelBalance">$10,000.00<small>Available to trade</small></div>
     <div class="wallet-actions"><button id="walletWithdraw">Withdraw</button><button class="fund" id="walletDeposit">Deposit</button></div>
     <button class="reset-demo" id="resetDemo">Refresh demo to $10,000</button>
@@ -30,7 +30,7 @@ function updateWallet() {
   const balance = walletMode === 'demo' ? demoFunds : realFunds;
   bw$('#walletBalance').textContent = format(balance);
   bw$('#walletPanelBalance').innerHTML = `${format(balance)}<small>Available to trade</small>`;
-  bw$('#walletAccountName').textContent = walletMode === 'demo' ? 'Demo account · virtual funds' : 'Real account · Housika Payments';
+  bw$('#walletAccountName').textContent = walletMode === 'demo' ? 'Demo account · virtual funds' : 'Real account · NEXORA Payments';
   document.querySelectorAll('.account-switcher button').forEach(button => button.classList.toggle('active', button.dataset.mode === walletMode));
   bw$('#resetDemo').style.display = walletMode === 'demo' ? 'block' : 'none';
   bw$('#accountSettings').style.display = walletMode === 'real' ? 'block' : 'none';
