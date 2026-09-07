@@ -3,7 +3,7 @@ const q = s => document.querySelector(s);
 const qa = s => [...document.querySelectorAll(s)];
 let stake = 10, zoom = 1;
 let points = Array.from({ length: 120 }, (_, i) => 500 + Math.sin(i / 7) * 70 + (Math.random() - .5) * 75);
-let digits = Array.from({ length: 10 }, (_, n) => ({ n, p: 5 + Math.random() * 7 }));
+let digits = Array.from({ length: 10 }, (_, n) => ({ n, p: 6 + Math.random() * 6 }));
 
 q('#marketList').innerHTML = ['Volatility 10 (1s)','Volatility 25 (1s)','Volatility 50 (1s)','Volatility 75 (1s)','Volatility 100 (1s)','Crash 500','Boom 500'].map(x => `<button>${x}</button>`).join('');
 q('#marketToggle').onclick = () => q('#marketList').classList.toggle('open');
@@ -29,7 +29,7 @@ function renderDigits(hit) {
 function tick() {
   const hit = Math.floor(Math.random() * 10);
   points.push(points.at(-1) + (Math.random() - .48) * 30); points = points.slice(-120);
-  digits = digits.map(d => ({ n: d.n, p: Math.max(.2, Math.min(12, d.p + (Math.random() - .5) * 1.1)) }));
+  digits = digits.map(d => ({ n: d.n, p: 6 + Math.random() * 6 }));
   q('#quoteLine').innerHTML = `${(9300 + points.at(-1) / 10).toFixed(2)} <i>${(Math.random() * 12).toFixed(2)}% ↑</i>`;
   draw(); renderDigits(hit);
 }
