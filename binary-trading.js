@@ -1,76 +1,23 @@
-const bt$ = selector => document.querySelector(selector);
-let openPositions = [];
-const choiceTemplates = Object.fromEntries(['even','odd'].map(id => [id, bt$(`#${id}`).innerHTML]));
+const bt$=selector=>document.querySelector(selector),bt$$=selector=>[...document.querySelectorAll(selector)];
+let openPosition=null,tradeMode='manual',contractSet='digits';
+const contractSets={digits:[['Even','Odd']],match:[['Match','Differ']],range:[['Over','Under']]};
+const tradeHistory=JSON.parse(localStorage.getItem('nexora_trade_history')||'[]');
 
-function restoreChoices() {
-  ['even','odd'].forEach(id => {
-    const button = bt$(`#${id}`);
-    button.classList.remove('contract-running', 'contract-even', 'contract-odd');
-    button.innerHTML = choiceTemplates[id];
-  });
-}
-
-function renderActive() {
-  restoreChoices();
-  const position = openPositions[0];
-  if (!position) return;
-  const id = position.type.toLowerCase();
-  const button = bt$(`#${id}`);
-  const seconds = Math.max(0, Math.ceil((position.endsAt - Date.now()) / 1000));
-  button.classList.add('contract-running', `contract-${id}`);
-  button.innerHTML = `<span class="running-dot"></span><b>Stop ${position.type}</b><em>${seconds}s remaining</em><small>Tap to cash out</small>`;
-}
-
-function settle(position) {
-  if (!openPositions.includes(position)) return;
-  const won = Math.random() > .48;
-  openPositions = openPositions.filter(item => item !== position);
-  if (won) {
-    window.nexoraBinaryWallet.credit(position.stake * 1.952);
-    toast(`${position.type} Demo contract won. Profit credited.`);
-  } else toast(`${position.type} Demo contract lost.`);
-  document.dispatchEvent(new CustomEvent('nexora:contract-outcome', { detail: { won, type: position.type, stake: position.stake } }));
-  renderActive();
-}
-
-function stopContract(position) {
-  clearTimeout(position.timer);
-  openPositions = openPositions.filter(item => item !== position);
-  const cashout = Number((position.stake * .85).toFixed(2));
-  window.nexoraBinaryWallet.credit(cashout);
-  toast(`${position.type} Demo contract stopped. $${cashout.toFixed(2)} returned.`);
-  document.dispatchEvent(new CustomEvent('nexora:contract-outcome', { detail: { won: true, type: position.type, stake: cashout, stopped: true } }));
-  renderActive();
-}
-
-function trade(type) {
-  const running = openPositions[0];
-  if (running) {
-    if (running.type === type) return stopContract(running);
-    return toast(`Stop the active ${running.type} contract before opening ${type}.`);
-  }
-  const stake = Number(bt$('#stake').value), wallet = window.nexoraBinaryWallet;
-  if (!wallet) return toast('Wallet is loading.');
-  if (!Number.isFinite(stake) || stake < 1) return toast('Minimum stake is $1.');
-  if (wallet.mode === 'real') return wallet.balance < stake ? toast('Insufficient balance to trade. Deposit funds to your Real account.') : toast('Real Binary execution needs your licensed provider connection.');
-  const current = Number(localStorage.getItem('nexora_demo_balance') || 10000);
-  const dailyLimit = Number(localStorage.getItem('nexora_daily_limit') || 0), stakedToday = Number(localStorage.getItem('nexora_daily_staked') || 0);
-  if (dailyLimit && stakedToday + stake > dailyLimit) return toast(`Daily Demo stake limit is $${dailyLimit.toFixed(2)}.`);
-  if (stake > current) return toast('Demo balance is insufficient. Refresh Demo in Wallet.');
-  wallet.debit(stake); localStorage.setItem('nexora_daily_staked', String(stakedToday + stake));
-  const position = { id: crypto.randomUUID(), type, stake, endsAt: Date.now() + 12000 };
-  position.timer = setTimeout(() => settle(position), 12000);
-  openPositions = [position]; renderActive();
-  toast(`${type} Demo contract opened for $${stake.toFixed(2)}.`);
-}
-
-bt$('#even').onclick = () => trade('Even');
-bt$('#odd').onclick = () => trade('Odd');
-const positionsButton = document.querySelector('#bottomPositions'); if (positionsButton) positionsButton.onclick = () => {
-  const position = openPositions[0];
-  bt$('#modalTitle').textContent = 'Positions';
-  bt$('#modalText').innerHTML = position ? `<p><b>${position.type}</b> · $${position.stake.toFixed(2)}<br><small>Running · ${Math.max(0, Math.ceil((position.endsAt - Date.now()) / 1000))} seconds remaining</small></p>` : '<p>No active Demo contracts.</p>';
-  bt$('#modalAction').textContent = 'Close'; bt$('#modalAction').onclick = () => bt$('.x').click();
-  bt$('#shade').classList.add('open'); bt$('#binModal').classList.add('open');
-};
-setInterval(renderActive, 250);
+function saveHistory(){localStorage.setItem('nexora_trade_history',JSON.stringify(tradeHistory.slice(0,30)));}
+function renderHistory(){const host=bt$('#tradeLedger');if(!host)return;const entries=tradeHistory.slice(0,7);host.innerHTML=entries.length?entries.map(item=>`<div class="ledger-row ${item.result}"><span>${item.type}</span><b>${item.result==='win'?'+':item.result==='loss'?'−':''}$${item.amount.toFixed(2)}</b><small>${item.label}</small></div>`).join(''):'<p class="ledger-empty">Your completed trades will appear here.</p>';const count=bt$('.left footer');if(count)count.textContent=`${tradeHistory.length} trade${tradeHistory.length===1?'':'s'}`;}
+function addHistory(type,result,amount,label){tradeHistory.unshift({type,result,amount:Number(amount),label,at:Date.now()});saveHistory();renderHistory();}
+function injectLedger(){bt$('.left').insertAdjacentHTML('beforeend','<section class="trade-ledger"><header><b>Recent activity</b><button id="clearLedger">Clear</button></header><div id="tradeLedger"></div></section>');bt$('#clearLedger').onclick=()=>{tradeHistory.splice(0);saveHistory();renderHistory();};renderHistory();}
+function currentButtons(){return {left:bt$('#even'),right:bt$('#odd')};}
+function setContractSet(key){contractSet=key;const [left,right]=contractSets[key][0],buttons=currentButtons();for(const [slot,type,button,icon] of [['left',left,buttons.left,'▦'],['right',right,buttons.right,'△']]){button.dataset.type=type;button.dataset.slot=slot;button.className=slot==='left'?'even':'odd';button.innerHTML=`<span>${icon}</span><b>${type}</b><em id="${slot==='left'?'even':'odd'}P">50.00%</em><small id="${slot==='left'?'even':'odd'}Pay">19.20 USD</small>`;}updatePayout();}
+function resetChoices(){setContractSet(contractSet);}
+function renderActive(){if(!openPosition)return;const button=bt$(`#${openPosition.slot}`),seconds=Math.max(0,Math.ceil((openPosition.endsAt-Date.now())/1000));button.classList.add('contract-running');button.innerHTML=`<span class="running-dot"></span><b>Stop ${openPosition.type}</b><em>${seconds}s remaining</em><small>Tap to cash out</small>`;}
+function decideOutcome(){const results=tradeHistory.filter(item=>item.result==='win'||item.result==='loss').slice(0,3);const twoWins=results.length>=2&&results[0].result==='win'&&results[1].result==='win';const threeLosses=results.length>=3&&results.every(item=>item.result==='loss');return twoWins?false:threeLosses?true:Math.random()<.47;}
+function settle(position){if(openPosition!==position)return;openPosition=null;const won=decideOutcome(),payout=Number((position.stake*1.92).toFixed(2)),profit=Number((payout-position.stake).toFixed(2));if(won){window.nexoraBinaryWallet.credit(payout);addHistory(position.type,'win',profit,'Payout credited');toast(`${position.type} contract won · +$${profit.toFixed(2)}`);}else{addHistory(position.type,'loss',position.stake,'Stake settled');toast(`${position.type} contract lost · −$${position.stake.toFixed(2)}`);}document.dispatchEvent(new CustomEvent('nexora:contract-outcome',{detail:{won,type:position.type,stake:position.stake}}));resetChoices();if(tradeMode==='auto')setTimeout(()=>startTrade(position.slot,true),800);}
+function stopContract(position){clearTimeout(position.timer);openPosition=null;const cashout=Number((position.stake*.78).toFixed(2));window.nexoraBinaryWallet.credit(cashout);addHistory(position.type,'cashout',Number((cashout-position.stake).toFixed(2)),'Stopped early');toast(`${position.type} stopped · $${cashout.toFixed(2)} returned.`);document.dispatchEvent(new CustomEvent('nexora:contract-outcome',{detail:{won:false,type:position.type,stake:position.stake,stopped:true}}));resetChoices();}
+function startTrade(slot,fromAuto=false){if(openPosition){if(openPosition.slot===slot)return stopContract(openPosition);return toast(`Stop the active ${openPosition.type} contract first.`);}const type=bt$(`#${slot}`).dataset.type,stake=Number(bt$('#stake').value),wallet=window.nexoraBinaryWallet;if(!wallet)return toast('Wallet is loading.');if(!Number.isFinite(stake)||stake<1)return toast('Minimum stake is $1.');if(wallet.mode==='real')return wallet.balance<stake?toast('Insufficient balance to trade. Deposit funds to your Real account.'):toast('Connect your licensed provider before placing Real orders.');const current=Number(localStorage.getItem('nexora_demo_balance')||10000),dailyLimit=Number(localStorage.getItem('nexora_daily_limit')||0),staked=Number(localStorage.getItem('nexora_daily_staked')||0);if(dailyLimit&&staked+stake>dailyLimit)return toast(`Daily Demo stake limit is $${dailyLimit.toFixed(2)}.`);if(stake>current)return toast('Demo balance is insufficient. Refresh Demo in Wallet.');wallet.debit(stake);localStorage.setItem('nexora_daily_staked',String(staked+stake));openPosition={id:crypto.randomUUID(),slot,type,stake,endsAt:Date.now()+12000};openPosition.timer=setTimeout(()=>settle(openPosition),12000);addHistory(type,'open',stake,fromAuto?'Auto contract opened':'Contract opened');renderActive();toast(`${type} ${tradeMode==='auto'?'Auto ':''}contract opened for $${stake.toFixed(2)}.`);}
+function updatePayout(){const stake=Math.max(1,Number(bt$('#stake').value)||1);bt$('#stake').value=stake;bt$('#payout').innerHTML=`${(stake*1.92).toFixed(2)} <small>USD</small>`;for(const id of ['evenPay','oddPay']){const item=bt$(`#${id}`);if(item)item.textContent=`${(stake*1.92).toFixed(2)} USD`;}bt$$('.quick button').forEach(button=>button.classList.toggle('active',Number(button.textContent.slice(1))===stake));}
+function bindMode(){const buttons=bt$$('.mode button');buttons.forEach(button=>button.onclick=()=>{tradeMode=button.dataset.mode;buttons.forEach(item=>item.classList.toggle('active',item===button));toast(`${tradeMode==='auto'?'Auto':'Manual'} mode selected.`);});}
+function bindTabs(){bt$$('.contract-tabs button').forEach((button,index)=>button.onclick=()=>{if(openPosition)return toast('Stop the active contract before switching contract type.');bt$$('.contract-tabs button').forEach(item=>item.classList.remove('active'));button.classList.add('active');setContractSet(['digits','match','range'][index]);toast(`${button.textContent} contracts selected.`);});}
+function bindStake(){bt$('#minus').onclick=()=>{bt$('#stake').value=Math.max(1,Number(bt$('#stake').value||1)-1);updatePayout();};bt$('#plus').onclick=()=>{bt$('#stake').value=Math.min(10000,Number(bt$('#stake').value||1)+1);updatePayout();};bt$('#stake').oninput=updatePayout;bt$$('.quick button').forEach(button=>button.onclick=()=>{bt$('#stake').value=Number(button.textContent.slice(1));updatePayout();});}
+function bindChoices(){bt$('#even').onclick=()=>startTrade('left');bt$('#odd').onclick=()=>startTrade('right');}
+injectLedger();bindMode();bindTabs();bindStake();setContractSet('digits');bindChoices();setInterval(renderActive,250);
