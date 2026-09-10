@@ -64,6 +64,7 @@ function choose(mode) {
 
 document.querySelectorAll('.account-switcher button').forEach(button => button.onclick = () => choose(button.dataset.mode));
 bw$('#walletLaunch').onclick = () => bw$('#walletPanel').classList.toggle('open');
+bw$('#walletBalance').onclick = () => bw$('#walletPanel').classList.toggle('open');
 bw$('#profileLaunch').onclick = () => { sessionStorage.setItem('nexora_internal_navigation', 'settings'); location.href = 'settings.html'; };
 bw$('#binAccount').onclick = () => { sessionStorage.setItem('nexora_internal_navigation', 'settings'); location.href = 'settings.html'; };
 bw$('#resetDemo').onclick = () => {
