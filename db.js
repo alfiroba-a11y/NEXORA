@@ -38,5 +38,15 @@ export async function migrate() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_method TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_destination TEXT;
+    CREATE TABLE IF NOT EXISTS demo_trade_activity (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      contract_type TEXT NOT NULL, result TEXT NOT NULL, amount NUMERIC(18,2) NOT NULL,
+      label TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS demo_trade_activity_user_created_idx ON demo_trade_activity(user_id, created_at DESC);
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      preferences JSONB NOT NULL DEFAULT '{}'::jsonb, updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 }

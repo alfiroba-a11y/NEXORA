@@ -3,6 +3,17 @@ let walletMode = localStorage.getItem('nexora_binary_mode') || 'demo';
 let demoFunds = Number(localStorage.getItem('nexora_demo_balance') || 10000);
 let realFunds = 0;
 
+function authHeaders() { return { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('nexora_token')}` }; }
+async function syncDemo(action, amount = 0) {
+  if (!localStorage.getItem('nexora_token')) return;
+  try {
+    const response = await fetch('/api/demo/balance', { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ action, amount }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not sync Demo balance.');
+    demoFunds = Number(data.balance); localStorage.setItem('nexora_demo_balance', demoFunds); updateWallet();
+  } catch (error) { toast(error.message); }
+}
+
 if (walletMode === 'real' && !localStorage.getItem('nexora_token')) walletMode = 'demo';
 
 const host = bw$('.headright');
@@ -71,6 +82,7 @@ bw$('#resetDemo').onclick = () => {
   demoFunds = 10000;
   localStorage.setItem('nexora_demo_balance', demoFunds);
   updateWallet();
+  syncDemo('reset');
   toast('Demo balance refreshed.');
 };
 bw$('#walletDeposit').onclick = () => { bw$('#walletPanel').classList.remove('open'); bw$('#binDeposit').click(); };
@@ -154,17 +166,31 @@ window.nexoraBinaryWallet = {
     demoFunds = Math.max(0, demoFunds - amount);
     localStorage.setItem('nexora_demo_balance', demoFunds);
     updateWallet();
+    syncDemo('debit', amount);
   },
   credit(amount) {
     if (walletMode !== 'demo') return;
     demoFunds += amount;
     localStorage.setItem('nexora_demo_balance', demoFunds);
     updateWallet();
+    syncDemo('credit', amount);
   }
 };
 
 updateWallet();
 if (walletMode === 'real') refreshRealBalance();
+async function loadWorkspace() {
+  if (!localStorage.getItem('nexora_token')) return;
+  try {
+    const response = await fetch('/api/workspace', { headers: { Authorization: `Bearer ${localStorage.getItem('nexora_token')}` } });
+    const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Could not sync account.');
+    demoFunds = Number(data.accounts.find(account => account.kind === 'demo')?.balance || 10000);
+    realFunds = Number(data.accounts.find(account => account.kind === 'real')?.balance || 0);
+    localStorage.setItem('nexora_demo_balance', demoFunds); localStorage.setItem('nexora_workspace_activity', JSON.stringify(data.activity || [])); localStorage.setItem('nexora_workspace_preferences', JSON.stringify(data.preferences || {})); updateWallet();
+    document.dispatchEvent(new CustomEvent('nexora:workspace-loaded', { detail: data }));
+  } catch (error) { toast(error.message); }
+}
+loadWorkspace();
 window.setInterval(() => {
   if (localStorage.getItem('nexora_pending_account_mode') === 'real' && localStorage.getItem('nexora_token')) {
     localStorage.removeItem('nexora_pending_account_mode');
