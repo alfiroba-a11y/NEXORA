@@ -1,5 +1,5 @@
 const h$ = selector => document.querySelector(selector);
-document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="binary-housika.css">');
+document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="binary-housika.css"><style>.stk-progress{display:grid;justify-items:center;gap:8px;padding:7px 0;text-align:center}.stk-progress b{font:800 17px Manrope;color:#eef6ff}.stk-progress span{color:#b9c8de;font:12px Manrope}.stk-progress small{color:#5de0b4;font:700 10px Manrope;letter-spacing:.3px;animation:stkBlink 1.15s ease-in-out infinite}.stk-progress em{color:#8399ba;font:9px DM Mono;font-style:normal;word-break:break-all}.stk-radar{position:relative;width:64px;height:64px;border:2px solid #39d8ad;border-radius:50%;background:radial-gradient(circle,#42dcb744 0 7%,transparent 8%);overflow:hidden}.stk-radar:after{content:"";position:absolute;inset:0;background:conic-gradient(from 0deg,transparent 0 70%,#43ddb955 83%,transparent 100%);animation:stkSweep 1.45s linear infinite}.stk-radar i{position:absolute;border:1px solid #3bd8af55;border-radius:50%;inset:12px}.stk-radar i:nth-child(2){inset:23px}.stk-radar i:nth-child(3){inset:32px;background:#4be4bc}@keyframes stkSweep{to{transform:rotate(360deg)}}@keyframes stkBlink{50%{opacity:.4}}</style>');
 h$('.flip')?.remove();
 
 function signed() { return !!localStorage.getItem('nexora_token'); }
@@ -67,7 +67,8 @@ function showDeposit() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Unable to send the M-Pesa prompt.');
       localStorage.setItem('nexora_pending_deposit_reference', data.reference);
-      h$('#modalText').innerHTML = '<p class="housika-note">M-Pesa prompt sent. Approve it on your phone. Your NEXORA balance will update automatically after confirmation.</p>';
+      h$('#modalTitle').textContent = 'NEXORA payment in progress';
+      h$('#modalText').innerHTML = `<div class="stk-progress"><div class="stk-radar"><i></i><i></i><i></i></div><b>STK prompt sent</b><span>Approve the M-Pesa prompt on your phone.</span><small>Checking your NEXORA payment securely…</small><em>Reference: ${data.reference}</em></div>`;
       h$('#modalAction').disabled = true;
       h$('#modalAction').textContent = 'Awaiting approval';
       pollPendingDeposit();
