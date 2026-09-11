@@ -23,9 +23,9 @@ app.use(express.static('.'));
 const issueToken = user => jwt.sign({ sub: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h', issuer: 'nexora.com', audience: 'nexora-app' });
 function auth(req,res,next) { try { req.user = jwt.verify((req.headers.authorization || '').replace('Bearer ',''), process.env.JWT_SECRET, { issuer:'nexora.com', audience:'nexora-app' }); next(); } catch { res.status(401).json({ error:'Authentication required' }); } }
 function reference(prefix='NXR') { return `${prefix}_${crypto.randomUUID().replaceAll('-','')}`; }
-// Paystack Kenya's direct M-Pesa channel accepts the local 07…/01… MSISDN form.
-// Accept common customer formats, then consistently send that local form upstream.
-function normalizeKenyanMobile(value) { const digits=String(value||'').replace(/\D/g,''); const local=digits.startsWith('254')?`0${digits.slice(3)}`:digits.startsWith('0')?digits:`0${digits}`; return /^0[17]\d{8}$/.test(local)?local:null; }
+// Paystack Kenya direct M-Pesa requires an E.164 number with its leading +.
+// Accept common customer formats, then consistently send +2547… / +2541… upstream.
+function normalizeKenyanMobile(value) { const digits=String(value||'').replace(/\D/g,''); const local=digits.startsWith('254')?`0${digits.slice(3)}`:digits.startsWith('0')?digits:`0${digits}`; return /^0[17]\d{8}$/.test(local)?`+254${local.slice(1)}`:null; }
 async function accountFor(client, userId, kind) { const { rows } = await client.query('SELECT * FROM accounts WHERE user_id=$1 AND kind=$2 FOR UPDATE',[userId,kind]); return rows[0]; }
 async function paystack(path, body) { const r=await fetch(`https://api.paystack.co${path}`,{method:'POST',headers:{Authorization:`Bearer ${process.env.PAYSTACK_SECRET_KEY}`,'Content-Type':'application/json'},body:JSON.stringify(body)}); const data=await r.json().catch(()=>({})); if(!r.ok||!data.status) { const error=new Error(data.message||'The payment provider rejected the M-Pesa request.'); error.status=r.status>=400&&r.status<500?422:502; throw error; } return data.data; }
 async function verifyPaystack(reference) { const r=await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,{headers:{Authorization:`Bearer ${process.env.PAYSTACK_SECRET_KEY}`}}); const data=await r.json(); if(!r.ok||!data.status) throw new Error(data.message||'Paystack verification failed'); return data.data; }
