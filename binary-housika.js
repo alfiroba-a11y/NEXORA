@@ -54,7 +54,7 @@ function pollPendingDeposit() {
 function showDeposit() {
   if (!signed()) return showAuth();
   h$('#modalTitle').textContent = 'NEXORA Deposit';
-  h$('#modalText').innerHTML = '<label>Deposit method<select id="hMethod"><option value="mpesa">M-Pesa</option></select></label><label>M-Pesa number<input id="hPhone" type="tel" inputmode="numeric" placeholder="2547XXXXXXXX"></label><label>Amount (KSh)<input id="hAmount" type="number" min="650" value="650"></label><p class="housika-note">Minimum deposit: $5 (KSh 650).</p>';
+  h$('#modalText').innerHTML = '<label>Deposit method<select id="hMethod"><option value="mpesa">M-Pesa</option></select></label><label>M-Pesa number<input id="hPhone" type="tel" inputmode="tel" placeholder="07…, 01…, +254…, or 254…"></label><label>Amount (KSh)<input id="hAmount" type="number" min="650" value="650"></label><p class="housika-note">Minimum deposit: $5 (KSh 650).</p>';
   h$('#modalAction').textContent = 'Deposit';
   h$('#modalAction').onclick = async () => {
     const amountKes = Number(h$('#hAmount').value), phone = h$('#hPhone').value.trim();
