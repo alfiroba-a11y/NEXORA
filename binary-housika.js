@@ -28,49 +28,48 @@ function showAuth(mode = 'signin') {
   show();
 }
 
-async function loadPaystack() {
-  if (window.PaystackPop) return true;
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://js.paystack.co/v1/inline.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => reject(new Error('Could not load NEXORA Payments checkout.'));
-    document.head.append(script);
-  });
-}
-
-function verifyHousikaDeposit(reference, headers) {
+function verifyHousikaDeposit(reference, headers, quiet = false) {
   fetch('/api/housika/verify-deposit', { method: 'POST', headers, body: JSON.stringify({ reference }) })
     .then(response => response.json().then(data => ({ ok: response.ok, data })))
     .then(result => {
-      if (!result.ok) throw new Error(result.data.error || 'Payment verification failed');
+      if (!result.ok) { if (!quiet) throw new Error(result.data.error || 'Payment is still awaiting approval.'); return; }
       close();
+      localStorage.removeItem('nexora_pending_deposit_reference');
       document.dispatchEvent(new Event('nexora:wallet-changed'));
       toast(`Deposit confirmed. $${Number(result.data.balanceCredited).toFixed(2)} credited.`);
-    }).catch(error => toast(error.message));
+    }).catch(error => { if (!quiet) toast(error.message); });
+}
+
+function pollPendingDeposit() {
+  const reference = localStorage.getItem('nexora_pending_deposit_reference');
+  if (!reference || !signed()) return;
+  const headers = { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' };
+  const poller = window.setInterval(() => {
+    if (!localStorage.getItem('nexora_pending_deposit_reference')) return window.clearInterval(poller);
+    verifyHousikaDeposit(reference, headers, true);
+  }, 5000);
+  window.setTimeout(() => window.clearInterval(poller), 180000);
 }
 
 function showDeposit() {
   if (!signed()) return showAuth();
   h$('#modalTitle').textContent = 'NEXORA Deposit';
-  h$('#modalText').innerHTML = '<label>Amount (KSh)<input id="hAmount" type="number" min="650" value="650"></label><p class="housika-note">Minimum deposit: $5 (KSh 650).</p>';
+  h$('#modalText').innerHTML = '<label>Deposit method<select id="hMethod"><option value="mpesa">M-Pesa</option></select></label><label>M-Pesa number<input id="hPhone" type="tel" inputmode="numeric" placeholder="2547XXXXXXXX"></label><label>Amount (KSh)<input id="hAmount" type="number" min="650" value="650"></label><p class="housika-note">Minimum deposit: $5 (KSh 650).</p>';
   h$('#modalAction').textContent = 'Deposit';
   h$('#modalAction').onclick = async () => {
-    const amountKes = Number(h$('#hAmount').value);
+    const amountKes = Number(h$('#hAmount').value), phone = h$('#hPhone').value.trim();
     if (!amountKes || amountKes < 650) return toast('Minimum deposit is $5 (KSh 650).');
+    if (!phone) return toast('Enter the M-Pesa number that should receive the prompt.');
     try {
       const headers = { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' };
-      const [configRes, intentRes] = await Promise.all([
-        fetch('/api/housika/config', { headers: { Authorization: `Bearer ${token()}` } }),
-        fetch('/api/housika/deposit-intent', { method: 'POST', headers, body: JSON.stringify({ amountKes }) })
-      ]);
-      const config = await configRes.json(), intent = await intentRes.json();
-      if (!configRes.ok) throw new Error(config.error || 'NEXORA Payments is not configured.');
-      if (!intentRes.ok) throw new Error(intent.error || 'Unable to start deposit.');
-      await loadPaystack();
-      const user = JSON.parse(localStorage.getItem('nexora_user'));
-      const handler = PaystackPop.setup({ key: config.publicKey, email: user.email, amount: Math.round(amountKes * 100), currency: 'KES', ref: intent.reference, channels: ['mobile_money', 'card'], callback: function(response) { verifyHousikaDeposit(response.reference, headers); }, onClose: function() { toast('Payment checkout closed.'); } });
-      handler.openIframe();
+      const response = await fetch('/api/deposits/mobile-money', { method: 'POST', headers, body: JSON.stringify({ amountKes, phone }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to send the M-Pesa prompt.');
+      localStorage.setItem('nexora_pending_deposit_reference', data.reference);
+      h$('#modalText').innerHTML = '<p class="housika-note">M-Pesa prompt sent. Approve it on your phone. Your NEXORA balance will update automatically after confirmation.</p>';
+      h$('#modalAction').disabled = true;
+      h$('#modalAction').textContent = 'Awaiting approval';
+      pollPendingDeposit();
     } catch (error) { toast(error.message); }
   };
   show();
@@ -100,3 +99,4 @@ h$('#binDeposit2').onclick = showDeposit;
 h$('#binAccount').onclick = () => signed() ? toast('You are signed in to NEXORA Binary.') : showAuth();
 h$('#binWithdraw').classList.remove('withdraw-disabled');
 h$('#binWithdraw').onclick = showWithdrawal;
+window.setTimeout(pollPendingDeposit, 1000);
