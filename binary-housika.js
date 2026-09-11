@@ -28,6 +28,17 @@ function showAuth(mode = 'signin') {
   show();
 }
 
+async function loadPaystack() {
+  if (window.PaystackPop) return;
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://js.paystack.co/v1/inline.js';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Could not open secure payment checkout.'));
+    document.head.append(script);
+  });
+}
+
 function verifyHousikaDeposit(reference, headers, quiet = false) {
   fetch('/api/housika/verify-deposit', { method: 'POST', headers, body: JSON.stringify({ reference }) })
     .then(response => response.json().then(data => ({ ok: response.ok, data })))
@@ -54,22 +65,24 @@ function pollPendingDeposit() {
 function showDeposit() {
   if (!signed()) return showAuth();
   h$('#modalTitle').textContent = 'NEXORA Deposit';
-  h$('#modalText').innerHTML = '<label>Deposit method<select id="hMethod"><option value="mpesa">M-Pesa</option></select></label><label>M-Pesa number<input id="hPhone" type="tel" inputmode="tel" placeholder="07…, 01…, +254…, or 254…"></label><label>Amount (KSh)<input id="hAmount" type="number" min="650" value="650"></label><p class="housika-note">Minimum deposit: $5 (KSh 650).</p>';
+  h$('#modalText').innerHTML = '<label>Deposit method<select id="hMethod"><option value="mpesa">M-Pesa</option></select></label><label>Amount (KSh)<input id="hAmount" type="number" min="650" value="650"></label><p class="housika-note">Minimum deposit: $5 (KSh 650).</p>';
   h$('#modalAction').textContent = 'Deposit';
   h$('#modalAction').onclick = async () => {
-    const amountKes = Number(h$('#hAmount').value), phone = h$('#hPhone').value.trim();
+    const amountKes = Number(h$('#hAmount').value);
     if (!amountKes || amountKes < 650) return toast('Minimum deposit is $5 (KSh 650).');
-    if (!phone) return toast('Enter the M-Pesa number that should receive the prompt.');
     try {
       const headers = { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' };
-      const response = await fetch('/api/deposits/mobile-money', { method: 'POST', headers, body: JSON.stringify({ amountKes, phone }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Unable to send the M-Pesa prompt.');
-      localStorage.setItem('nexora_pending_deposit_reference', data.reference);
-      h$('#modalText').innerHTML = '<p class="housika-note">M-Pesa prompt sent. Approve it on your phone. Your NEXORA balance will update automatically after confirmation.</p>';
-      h$('#modalAction').disabled = true;
-      h$('#modalAction').textContent = 'Awaiting approval';
-      pollPendingDeposit();
+      const [configResponse, intentResponse] = await Promise.all([
+        fetch('/api/housika/config', { headers: { Authorization: `Bearer ${token()}` } }),
+        fetch('/api/housika/deposit-intent', { method: 'POST', headers, body: JSON.stringify({ amountKes }) })
+      ]);
+      const config = await configResponse.json(), intent = await intentResponse.json();
+      if (!configResponse.ok) throw new Error(config.error || 'Payments are not configured.');
+      if (!intentResponse.ok) throw new Error(intent.error || 'Unable to start deposit.');
+      localStorage.setItem('nexora_pending_deposit_reference', intent.reference);
+      await loadPaystack();
+      const handler = PaystackPop.setup({ key: config.publicKey, email: intent.checkoutEmail, amount: Math.round(amountKes * 100), currency: 'KES', ref: intent.reference, channels: ['mobile_money'], callback: response => verifyHousikaDeposit(response.reference, headers), onClose: () => toast('Payment checkout closed.') });
+      handler.openIframe();
     } catch (error) { toast(error.message); }
   };
   show();
