@@ -5,6 +5,7 @@ if (walletMode === 'real') walletMode = 'practice';
 let demoFunds = Number(localStorage.getItem('nexora_demo_balance') || 10000);
 let practiceFunds = Number(localStorage.getItem('nexora_practice_balance') || 10000);
 let realFunds = 0;
+let derivSummary = null;
 
 function authHeaders() { return { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('nexora_token')}` }; }
 async function syncDemo(action, amount = 0) {
@@ -33,6 +34,8 @@ document.body.insertAdjacentHTML('beforeend', `
     <div class="wallet-balance" id="walletPanelBalance">$10,000.00<small>Available to trade</small></div><p class="stored-funds" id="storedFunds"></p>
     <div class="wallet-actions"><button id="walletWithdraw">Withdraw</button><button class="fund" id="walletDeposit">Deposit</button></div>
     <button class="reset-demo" id="resetDemo">Refresh demo to $10,000</button>
+    <p class="stored-funds" id="derivStatus">Connect your Deriv account to view its own balance.</p>
+    <button class="account-settings" id="derivConnect">Connect Deriv account</button>
     <button class="account-settings" id="accountSettings">Account settings</button>
   </section>`);
 
@@ -46,6 +49,12 @@ function updateWallet() {
   bw$('#walletPanelBalance').innerHTML = `${format(balance)}<small>Available to trade</small>`;
   bw$('#walletAccountName').textContent = walletMode === 'demo' ? 'Demo account · virtual funds' : 'Practice account · virtual funds';
   bw$('#storedFunds').textContent = realFunds > 0 ? `Deposited wallet balance: ${format(realFunds)} · reserved for withdrawal` : 'Deposits are held separately and are never used for Practice trades.';
+  const derivStatus = bw$('#derivStatus');
+  if (derivSummary?.connected) {
+    const real = derivSummary.accounts.find(account => String(account.account_type || account.type || '').toLowerCase() === 'real');
+    const balance = Number(real?.balance ?? real?.currency?.balance);
+    derivStatus.textContent = Number.isFinite(balance) ? `Deriv real-account balance: ${format(balance)} ${real?.currency || 'USD'}` : 'Deriv account connected. Select your Deriv account to trade with its own balance.';
+  } else derivStatus.textContent = 'Connect your Deriv account to view its own balance.';
   document.querySelectorAll('.account-switcher button').forEach(button => button.classList.toggle('active', button.dataset.mode === walletMode));
   bw$('#resetDemo').style.display = 'block';
   bw$('#resetDemo').textContent = walletMode === 'demo' ? 'Refresh demo to $10,000' : 'Refresh practice to $10,000';
@@ -63,6 +72,26 @@ async function refreshRealBalance() {
   } catch (error) {
     if (walletMode === 'real') toast(error.message);
   }
+}
+
+async function refreshDerivConnection() {
+  if (!localStorage.getItem('nexora_token')) return;
+  try {
+    const response = await fetch('/api/deriv/connection', { headers: { Authorization: `Bearer ${localStorage.getItem('nexora_token')}` } });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not load Deriv connection.');
+    derivSummary = data; updateWallet();
+  } catch (error) { derivSummary = null; updateWallet(); }
+}
+
+async function connectDeriv() {
+  if (!localStorage.getItem('nexora_token')) { toast('Sign in before connecting your Deriv account.'); location.href = 'index.html'; return; }
+  try {
+    const response = await fetch('/api/deriv/connect', { headers: { Authorization: `Bearer ${localStorage.getItem('nexora_token')}` } });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not start Deriv connection.');
+    location.assign(data.authorizationUrl);
+  } catch (error) { toast(error.message); }
 }
 
 function choose(mode) {
@@ -92,6 +121,7 @@ bw$('#resetDemo').onclick = () => {
 bw$('#walletDeposit').onclick = () => { bw$('#walletPanel').classList.remove('open'); bw$('#binDeposit').click(); };
 bw$('#walletWithdraw').onclick = () => { bw$('#walletPanel').classList.remove('open'); bw$('#binWithdraw').click(); };
 bw$('#accountSettings').onclick = () => { sessionStorage.setItem('nexora_internal_navigation', 'settings'); location.href = 'settings.html'; };
+bw$('#derivConnect').onclick = connectDeriv;
 
 async function openAccountSettings() {
   if (!signed()) return choose('real');
@@ -101,11 +131,12 @@ async function openAccountSettings() {
     if (!response.ok) throw new Error(profile.error || 'Could not open account settings.');
     bw$('#walletPanel').classList.remove('open');
     bw$('#modalTitle').textContent = 'Account settings';
-    bw$('#modalText').innerHTML = `<label>Name<input id="profileName" value="${profile.display_name || ''}" placeholder="Your name"></label><label>Email<input id="profileEmail" type="email" value="${profile.email || ''}"></label><label>Withdrawal method<select id="profileMethod"><option value="mpesa">M-Pesa</option><option value="trc20">USDT TRC20</option></select></label><label>Withdrawal destination<input id="profileDestination" value="${profile.withdrawal_destination || ''}" placeholder="M-Pesa number or TRC20 address"></label><button class="auth-toggle" id="profileTheme">${document.body.classList.contains('light-theme') ? 'Use dark mode' : 'Use light mode'}</button><button class="auth-toggle" id="profileSignOut">Sign out</button><button class="delete-account" id="profileDelete">Delete account</button>`;
+    bw$('#modalText').innerHTML = `<label>Name<input id="profileName" value="${profile.display_name || ''}" placeholder="Your name"></label><label>Email<input id="profileEmail" type="email" value="${profile.email || ''}"></label><label>Withdrawal method<select id="profileMethod"><option value="mpesa">M-Pesa</option><option value="trc20">USDT TRC20</option></select></label><label>Withdrawal destination<input id="profileDestination" value="${profile.withdrawal_destination || ''}" placeholder="M-Pesa number or TRC20 address"></label><button class="auth-toggle" id="profileDeriv">Connect Deriv account</button><button class="auth-toggle" id="profileTheme">${document.body.classList.contains('light-theme') ? 'Use dark mode' : 'Use light mode'}</button><button class="auth-toggle" id="profileSignOut">Sign out</button><button class="delete-account" id="profileDelete">Delete account</button>`;
     bw$('#profileMethod').value = profile.withdrawal_method || 'mpesa';
     bw$('#modalAction').textContent = 'Save changes';
     bw$('#modalAction').onclick = () => saveAccountSettings();
     bw$('#profileTheme').onclick = toggleTheme;
+    bw$('#profileDeriv').onclick = connectDeriv;
     bw$('#profileSignOut').onclick = signOut;
     bw$('#profileDelete').onclick = deleteAccount;
     show();
@@ -179,6 +210,9 @@ window.nexoraBinaryWallet = {
 
 updateWallet();
 refreshRealBalance();
+refreshDerivConnection();
+const derivOutcome = new URLSearchParams(location.search).get('deriv');
+if (derivOutcome) { history.replaceState({}, '', location.pathname); window.setTimeout(() => { toast(derivOutcome === 'connected' ? 'Deriv account connected securely.' : 'Deriv connection was not completed.'); refreshDerivConnection(); }, 250); }
 async function loadWorkspace() {
   if (!localStorage.getItem('nexora_token')) return;
   try {

@@ -48,5 +48,13 @@ export async function migrate() {
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       preferences JSONB NOT NULL DEFAULT '{}'::jsonb, updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS deriv_oauth_states (
+      state TEXT PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code_verifier TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS deriv_connections (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      encrypted_access_token TEXT NOT NULL, connected_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 }
