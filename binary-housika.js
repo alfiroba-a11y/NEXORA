@@ -90,7 +90,7 @@ function showWithdrawal() {
       const response = await fetch('/api/withdrawal-requests', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` }, body: JSON.stringify({ amount, method: h$('#wMethod').value, destination }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Unable to create request');
-      close(); toast('Withdrawal processing. You will be notified after review.');
+      close(); document.dispatchEvent(new Event('nexora:wallet-changed')); toast('Withdrawal processing. Your deposited wallet balance has been reserved.');
     } catch (error) { toast(error.message); }
   };
   show();
