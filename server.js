@@ -51,7 +51,67 @@ app.post('/api/payments/withdraw',auth,(_,res)=>res.status(403).json({error:'Wit
 app.post('/api/withdrawal-requests',auth,async(req,res,next)=>{try{const amount=Number(req.body.amount),method=String(req.body.method||''),destination=String(req.body.destination||'').trim();if(!Number.isFinite(amount)||amount<10||!['mpesa','trc20'].includes(method)||!destination)return res.status(400).json({error:'Minimum withdrawal is $10. Enter a valid destination.'});const client=await db.connect();try{await client.query('BEGIN');const account=await accountFor(client,req.user.sub,'real');if(!account||Number(account.balance)<amount){await client.query('ROLLBACK');return res.status(400).json({error:'Insufficient deposited wallet balance for this withdrawal.'});}await client.query('UPDATE accounts SET balance=balance-$1 WHERE id=$2',[amount,account.id]);const {rows:[request]}=await client.query('INSERT INTO withdrawal_requests(user_id,amount,method,destination) VALUES($1,$2,$3,$4) RETURNING id,status,created_at',[req.user.sub,amount,method,destination]);await client.query('COMMIT');res.status(202).json({request});}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}}catch(e){next(e)}});
 app.post('/api/payments/paystack/webhook',async(req,res,next)=>{try{const signature=req.get('x-paystack-signature')||'';const valid=crypto.createHmac('sha512',process.env.PAYSTACK_WEBHOOK_SECRET||process.env.PAYSTACK_SECRET_KEY).update(req.rawBody).digest('hex');const supplied=Buffer.from(signature), expected=Buffer.from(valid);if(supplied.length!==expected.length||!crypto.timingSafeEqual(supplied,expected))return res.status(401).send('Invalid signature');const event=req.body;const eventId=`${event.event}:${event.data?.reference||event.data?.id}`;const client=await db.connect();try{await client.query('BEGIN');const exists=await client.query('SELECT 1 FROM webhook_events WHERE event_id=$1',[eventId]);if(exists.rowCount){await client.query('ROLLBACK');return res.sendStatus(200)}await client.query('INSERT INTO webhook_events(event_id,payload) VALUES($1,$2)',[eventId,event]);if(event.event==='charge.success'){const ref=event.data.reference;const {rows:[payment]}=await client.query("UPDATE payment_events SET status='settled',provider_payload=$1,settled_at=now() WHERE reference=$2 AND direction='deposit' AND status='pending' RETURNING *",[event.data,ref]);if(payment)await client.query('UPDATE accounts SET balance=balance+$1 WHERE id=$2',[payment.amount,payment.account_id]);}if(event.event==='transfer.failed'||event.event==='transfer.reversed'){const ref=event.data.reference;const {rows:[payment]}=await client.query("UPDATE payment_events SET status='reversed',provider_payload=$1 WHERE reference=$2 AND direction='withdrawal' AND status='pending' RETURNING *",[event.data,ref]);if(payment)await client.query('UPDATE accounts SET balance=balance+$1 WHERE id=$2',[payment.amount,payment.account_id]);}await client.query('COMMIT');res.sendStatus(200)}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}}catch(e){next(e)}});
 app.post('/api/payments/hashpay/webhook',async(req,res,next)=>{try{const secret=process.env.HASHPAY_WEBHOOK_SECRET||'';const signature=String(req.get('x-hashpay-signature')||'').replace(/^sha256=/,'');const expected=crypto.createHmac('sha256',secret).update(req.rawBody).digest('hex');const supplied=Buffer.from(signature),digest=Buffer.from(expected);if(!secret||supplied.length!==digest.length||!crypto.timingSafeEqual(supplied,digest))return res.status(401).send('Invalid signature');const event=req.body,eventId=`hashpay:${event.event||'unknown'}:${event.TransactionID||event.CheckoutRequestID||event.TransactionReference||crypto.randomUUID()}`;const client=await db.connect();try{await client.query('BEGIN');const exists=await client.query('SELECT 1 FROM webhook_events WHERE event_id=$1',[eventId]);if(exists.rowCount){await client.query('ROLLBACK');return res.sendStatus(200)}await client.query('INSERT INTO webhook_events(event_id,payload) VALUES($1,$2)',[eventId,event]);if(event.event==='payment.success'&&Number(event.ResponseCode)===0){const {rows:[payment]}=await client.query("UPDATE payment_events SET status='settled',provider_payload=$1,settled_at=now() WHERE direction='deposit' AND status='pending' AND (reference=$2 OR provider_payload->>'checkout_id'=$3) RETURNING *",[event,event.TransactionReference,event.CheckoutRequestID]);if(payment){if(Math.round(Number(payment.amount)*130)!==Math.round(Number(event.TransactionAmount)))throw new Error('HashPay payment amount does not match the deposit request.');await client.query('UPDATE accounts SET balance=balance+$1 WHERE id=$2',[payment.amount,payment.account_id]);}}await client.query('COMMIT');res.sendStatus(200)}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}}catch(e){next(e)}});
-app.post('/api/orders',auth,async(req,res,next)=>{try{const {symbol,side,orderType='market',amount,accountKind='real'}=req.body;if(!['buy','sell'].includes(side)||!symbol||!Number.isFinite(Number(amount))||Number(amount)<=0)return res.status(400).json({error:'Invalid order.'});const {rows:[account]}=await db.query('SELECT * FROM accounts WHERE user_id=$1 AND kind=$2',[req.user.sub,accountKind]);if(!account)return res.status(404).json({error:'Account not found.'});const result=await broker.placeOrder({symbol,side,orderType,amount:Number(amount),accountId:account.id});const {rows:[order]}=await db.query('INSERT INTO orders(user_id,account_id,broker_order_id,symbol,side,order_type,amount,status,provider_payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',[req.user.sub,account.id,String(result.id||result.orderId||''),symbol,side,orderType,amount,result.status||'submitted',result]);res.status(201).json(order)}catch(e){next(e)}});
+
+// Enhanced Live Order Execution Endpoint with Transaction Safety & Balance Validation
+app.post('/api/orders', auth, async (req, res, next) => {
+    const client = await db.connect();
+    try {
+        const { symbol, side, orderType = 'market', amount, accountKind = 'real' } = req.body;
+        
+        if (!['buy', 'sell'].includes(side) || !symbol || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+            return res.status(400).json({ error: 'Invalid order parameters.' });
+        }
+
+        await client.query('BEGIN');
+
+        // Lock the user's account row for balance updates
+        const { rows: [account] } = await client.query(
+            'SELECT * FROM accounts WHERE user_id=$1 AND kind=$2 FOR UPDATE',
+            [req.user.sub, accountKind]
+        );
+
+        if (!account) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Account not found.' });
+        }
+
+        const stake = Number(amount);
+        if (Number(account.balance) < stake) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Insufficient real balance for this order.' });
+        }
+
+        // Deduct stake from real balance
+        await client.query('UPDATE accounts SET balance = balance - $1 WHERE id = $2', [stake, account.id]);
+
+        // Place order through broker connector
+        let result;
+        try {
+            result = await broker.placeOrder({ symbol, side, orderType, amount: stake, accountId: account.id });
+        } catch (brokerErr) {
+            // If broker fails, rollback the debit and abort order
+            await client.query('ROLLBACK');
+            return res.status(502).json({ error: brokerErr.message || 'Broker execution failed.' });
+        }
+
+        const brokerOrderId = String(result?.id || result?.orderId || crypto.randomUUID());
+        const orderStatus = result?.status || 'submitted';
+
+        const { rows: [order] } = await client.query(
+            'INSERT INTO orders(user_id, account_id, broker_order_id, symbol, side, order_type, amount, status, provider_payload) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+            [req.user.sub, account.id, brokerOrderId, symbol, side, orderType, stake, orderStatus, result]
+        );
+
+        await client.query('COMMIT');
+        res.status(201).json({ success: true, order, newBalance: Number(account.balance) - stake });
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        next(e);
+    } finally {
+        client.release();
+    }
+});
+
 app.use((err,req,res,next)=>{console.error(err);res.status(err.status||500).json({error:err.status?err.message:'Server error',requestId:reference('ERR')});});
 async function start() {
   await migrate();
