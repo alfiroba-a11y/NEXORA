@@ -1,9 +1,8 @@
 const bw$ = selector => document.querySelector(selector);
 document.head.insertAdjacentHTML('beforeend','<style>.wallet-panel .stored-funds{margin:0 0 12px;color:#9fc0e9;font:10px Manrope;line-height:1.5}</style>');
 let walletMode = localStorage.getItem('nexora_binary_mode') || 'demo';
-if (walletMode === 'real') walletMode = 'practice';
+if (walletMode === 'practice') walletMode = 'real';
 let demoFunds = Number(localStorage.getItem('nexora_demo_balance') || 10000);
-let practiceFunds = Number(localStorage.getItem('nexora_practice_balance') || 10000);
 let realFunds = 0;
 let derivSummary = null;
 
@@ -23,7 +22,7 @@ if (walletMode === 'real' && !localStorage.getItem('nexora_token')) walletMode =
 const host = bw$('.headright');
 host.insertAdjacentHTML('afterbegin', `
   <div class="account-switcher" aria-label="Account type">
-    <button data-mode="demo">Demo</button><button data-mode="practice">Practice</button>
+    <button data-mode="demo">Demo</button><button data-mode="real">Real</button>
   </div>
   <div class="account-balance" aria-label="Available balance"><b id="walletBalance">$10,000.00</b></div>
   <button class="wallet-launch" id="walletLaunch">Wallet</button><button class="profile-launch" id="profileLaunch" aria-label="Profile" hidden></button>`);
@@ -44,11 +43,15 @@ function format(amount) {
 }
 
 function updateWallet() {
-  const balance = walletMode === 'demo' ? demoFunds : practiceFunds;
+  const real = derivSummary?.accounts?.find(account => String(account.account_type || account.type || '').toLowerCase() === 'real');
+  const connectedBalance = Number(real?.balance ?? real?.currency?.balance ?? 0);
+  const balance = walletMode === 'demo' ? demoFunds : connectedBalance;
   bw$('#walletBalance').textContent = format(balance);
   bw$('#walletPanelBalance').innerHTML = `${format(balance)}<small>Available to trade</small>`;
-  bw$('#walletAccountName').textContent = walletMode === 'demo' ? 'Demo account · virtual funds' : 'Practice account · virtual funds';
-  bw$('#storedFunds').textContent = realFunds > 0 ? `Deposited wallet balance: ${format(realFunds)} · reserved for withdrawal` : 'Deposits are held separately and are never used for Practice trades.';
+  const accountBadge = document.querySelector('.account span');
+  if (accountBadge) accountBadge.innerHTML = `${walletMode === 'demo' ? 'Demo' : 'Real'}<br><b>${format(balance)}</b>`;
+  bw$('#walletAccountName').textContent = walletMode === 'demo' ? 'Demo account · virtual funds' : (derivSummary?.connected ? 'Connected Deriv real account' : 'Connect your Deriv real account');
+  bw$('#storedFunds').textContent = realFunds > 0 ? `NEXORA deposit balance: ${format(realFunds)} · available for withdrawal` : 'NEXORA deposits and Deriv trading balances are separate.';
   const derivStatus = bw$('#derivStatus');
   if (derivSummary?.connected) {
     const real = derivSummary.accounts.find(account => String(account.account_type || account.type || '').toLowerCase() === 'real');
@@ -56,8 +59,8 @@ function updateWallet() {
     derivStatus.textContent = Number.isFinite(balance) ? `Deriv real-account balance: ${format(balance)} ${real?.currency || 'USD'}` : 'Deriv account connected. Select your Deriv account to trade with its own balance.';
   } else derivStatus.textContent = 'Connect your Deriv account to view its own balance.';
   document.querySelectorAll('.account-switcher button').forEach(button => button.classList.toggle('active', button.dataset.mode === walletMode));
-  bw$('#resetDemo').style.display = 'block';
-  bw$('#resetDemo').textContent = walletMode === 'demo' ? 'Refresh demo to $10,000' : 'Refresh practice to $10,000';
+  bw$('#resetDemo').style.display = walletMode === 'demo' ? 'block' : 'none';
+  bw$('#resetDemo').textContent = 'Refresh demo to $10,000';
   bw$('#accountSettings').style.display = localStorage.getItem('nexora_token') ? 'block' : 'none';
 }
 
@@ -95,8 +98,8 @@ async function connectDeriv() {
 }
 
 function choose(mode) {
-  if (mode === 'practice' && !localStorage.getItem('nexora_token')) {
-    localStorage.setItem('nexora_pending_account_mode', 'practice');
+  if (mode === 'real' && !localStorage.getItem('nexora_token')) {
+    localStorage.setItem('nexora_pending_account_mode', 'real');
     bw$('#binAccount').click();
     return;
   }
@@ -104,7 +107,7 @@ function choose(mode) {
   localStorage.setItem('nexora_binary_mode', mode);
   updateWallet();
   refreshRealBalance();
-  toast(`${mode === 'demo' ? 'Demo' : 'Practice'} account selected. Deposits are not used for trades.`);
+  toast(mode === 'demo' ? 'Demo account selected.' : (derivSummary?.connected ? 'Deriv real account selected.' : 'Connect your Deriv account to use Real trading.'));
 }
 
 document.querySelectorAll('.account-switcher button').forEach(button => button.onclick = () => choose(button.dataset.mode));
@@ -114,9 +117,8 @@ bw$('#profileLaunch').onclick = () => { sessionStorage.setItem('nexora_internal_
 bw$('#binAccount').onclick = () => { sessionStorage.setItem('nexora_internal_navigation', 'settings'); location.href = 'settings.html'; };
 bw$('#resetDemo').onclick = () => {
   if (walletMode === 'demo') { demoFunds = 10000; localStorage.setItem('nexora_demo_balance', demoFunds); syncDemo('reset'); }
-  else { practiceFunds = 10000; localStorage.setItem('nexora_practice_balance', practiceFunds); }
   updateWallet();
-  toast(`${walletMode === 'demo' ? 'Demo' : 'Practice'} balance refreshed.`);
+  toast('Demo balance refreshed.');
 };
 bw$('#walletDeposit').onclick = () => { bw$('#walletPanel').classList.remove('open'); bw$('#binDeposit').click(); };
 bw$('#walletWithdraw').onclick = () => { bw$('#walletPanel').classList.remove('open'); bw$('#binWithdraw').click(); };
@@ -186,24 +188,24 @@ document.querySelector('.theme').onclick = toggleTheme;
 if (localStorage.getItem('nexora_theme') === 'light') document.body.classList.add('light-theme');
 
 document.addEventListener('nexora:auth-changed', () => {
-  if (localStorage.getItem('nexora_pending_account_mode') === 'practice') {
+  if (localStorage.getItem('nexora_pending_account_mode') === 'real') {
     localStorage.removeItem('nexora_pending_account_mode');
-    choose('practice');
+    choose('real');
   }
 });
 document.addEventListener('nexora:wallet-changed', refreshRealBalance);
 
 window.nexoraBinaryWallet = {
   get mode() { return walletMode; },
-  get balance() { return walletMode === 'demo' ? demoFunds : practiceFunds; },
+  get balance() { const account=derivSummary?.accounts?.find(item=>String(item.account_type||item.type||'').toLowerCase()==='real'); return walletMode === 'demo' ? demoFunds : Number(account?.balance ?? account?.currency?.balance ?? 0); },
   debit(amount) {
     if (walletMode === 'demo') { demoFunds = Math.max(0, demoFunds - amount); localStorage.setItem('nexora_demo_balance', demoFunds); syncDemo('debit', amount); }
-    else { practiceFunds = Math.max(0, practiceFunds - amount); localStorage.setItem('nexora_practice_balance', practiceFunds); }
+    else { toast('Real trades are sent to Deriv and never change a local balance.'); return false; }
     updateWallet();
   },
   credit(amount) {
     if (walletMode === 'demo') { demoFunds += amount; localStorage.setItem('nexora_demo_balance', demoFunds); syncDemo('credit', amount); }
-    else { practiceFunds += amount; localStorage.setItem('nexora_practice_balance', practiceFunds); }
+    else { toast('Real trade results are supplied by Deriv.'); return false; }
     updateWallet();
   }
 };
@@ -226,8 +228,8 @@ async function loadWorkspace() {
 }
 loadWorkspace();
 window.setInterval(() => {
-  if (localStorage.getItem('nexora_pending_account_mode') === 'practice' && localStorage.getItem('nexora_token')) {
+  if (localStorage.getItem('nexora_pending_account_mode') === 'real' && localStorage.getItem('nexora_token')) {
     localStorage.removeItem('nexora_pending_account_mode');
-    choose('practice');
+    choose('real');
   }
 }, 400);
