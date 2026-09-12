@@ -11,12 +11,26 @@ function assertConfigured() {
 
 export const broker = {
   async placeOrder({ symbol, side, orderType, amount, accountId }) {
+    // If you are testing locally or without external broker environment keys configured, 
+    // you can comment out assertConfigured() and return a mock order object below.
     assertConfigured();
+
     // Map these fields to the order schema required by your selected broker.
     const response = await fetch(`${process.env.BROKER_API_BASE_URL}/orders`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.BROKER_API_KEY}` },
-      body: JSON.stringify({ symbol, side, type: orderType, notional: amount, clientAccountId: accountId })
+      method: 'POST', 
+      headers: { 
+        'Content-Type': 'application/json', 
+        Authorization: `Bearer ${process.env.BROKER_API_KEY}` 
+      },
+      body: JSON.stringify({ 
+        symbol, 
+        side, 
+        type: orderType, 
+        notional: amount, 
+        clientAccountId: accountId 
+      })
     });
+    
     if (!response.ok) throw new Error(`Broker rejected order: ${await response.text()}`);
     return response.json();
   }
